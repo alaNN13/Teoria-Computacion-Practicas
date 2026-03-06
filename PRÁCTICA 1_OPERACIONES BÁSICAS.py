@@ -1,10 +1,12 @@
 import flet as ft
+import itertools
+
 
 def obtener_prefijos(cadena):
-    return [cadena[:i+1] for i in range(len(cadena))] + ["ε (cadena vacía)"]
+    return [cadena[:i+1] for i in range(len(cadena))] + ["ε"]
 
 def obtener_sufijos(cadena):
-    return [cadena[i:] for i in range(len(cadena))] + ["ε (cadena vacía)"]
+    return [cadena[i:] for i in range(len(cadena))] + ["ε"]
 
 def obtener_subcadenas(cadena):
     n = len(cadena)
@@ -12,44 +14,174 @@ def obtener_subcadenas(cadena):
     for i in range(n):
         for j in range(i + 1, n + 1):
             subcadenas.add(cadena[i:j])
-    return list(subcadenas) + ["ε (cadena vacía)"]
+    return list(subcadenas) + ["ε"]
+
+
+
+def kleene(alfabeto, longitud):
+    resultado = ["ε"]
+    for i in range(1, longitud + 1):
+        for p in itertools.product(alfabeto, repeat=i):
+            resultado.append("".join(p))
+    return resultado
+
+
+def positiva(alfabeto, longitud):
+    resultado = []
+    for i in range(1, longitud + 1):
+        for p in itertools.product(alfabeto, repeat=i):
+            resultado.append("".join(p))
+    return resultado
+
 
 def main(page: ft.Page):
-    page.title = "Operaciones Básicas - Teoría de la Computación"
+
+    page.title = "Operaciones sobre Lenguajes"
     page.scroll = "adaptive"
-    page.theme_mode = ft.ThemeMode.LIGHT
+    page.window_width = 700
 
-    # Componentes de la interfaz
-    entrada_cadena = ft.TextField(label="Ingresa una cadena", hint_text="Ejemplo: abc")
-    resultado_texto = ft.Column()
 
-    def calcular_clic(e):
+    entrada_cadena = ft.TextField(label="Ingrese una cadena", width=300)
+
+    resultado_cadena = ft.Text(size=14)
+
+    texto_guardar = ""
+
+    def calcular_cadena(e):
+        nonlocal texto_guardar
+
         cadena = entrada_cadena.value
+
         if not cadena:
+            resultado_cadena.value = "Ingrese una cadena válida"
+            page.update()
             return
 
         prefijos = obtener_prefijos(cadena)
         sufijos = obtener_sufijos(cadena)
         subcadenas = obtener_subcadenas(cadena)
 
-        resultado_texto.controls.clear()
-        resultado_texto.controls.append(ft.Text(f"Resultados para: {cadena}", weight="bold", size=20))
-        resultado_texto.controls.append(ft.Text(f"Prefijos: {', '.join(prefijos)}"))
-        resultado_texto.controls.append(ft.Text(f"Sufijos: {', '.join(sufijos)}"))
-        resultado_texto.controls.append(ft.Text(f"Subcadenas: {', '.join(subcadenas)}"))
-        
+        texto = f"Resultados para: {cadena}\n\n"
+
+        texto += "Prefijos:\n"
+        texto += ", ".join(prefijos) + "\n\n"
+
+        texto += "Sufijos:\n"
+        texto += ", ".join(sufijos) + "\n\n"
+
+        texto += "Subcadenas:\n"
+        texto += ", ".join(subcadenas)
+
+        texto_guardar = texto
+        resultado_cadena.value = texto
+
         page.update()
 
-    # Botón principal
-    boton_calcular = ft.ElevatedButton("Calcular Operaciones", on_click=calcular_clic)
+    def guardar(e):
+        if texto_guardar:
+            with open("resultados.txt", "w", encoding="utf-8") as f:
+                f.write(texto_guardar)
 
-    # Agregar a la página
-    page.add(
-        ft.Text("Ejercicio 1: Subcadenas, Prefijos y Sufijos", size=25, weight="bold"),
-        entrada_cadena,
-        boton_calcular,
-        ft.Divider(),
-        resultado_texto
+            resultado_cadena.value += "\n\nResultados guardados en resultados.txt"
+            page.update()
+
+    entrada_alfabeto = ft.TextField(label="Alfabeto (ej: a,b)", width=300)
+    entrada_longitud = ft.TextField(label="Longitud máxima", width=150)
+
+    resultado_kleene = ft.Text(size=14)
+
+    texto_guardar_kleene = ""
+
+    def calcular_kleene(e):
+
+        nonlocal texto_guardar_kleene
+        alfabeto = entrada_alfabeto.value.split(",")
+        longitud = int(entrada_longitud.value)
+
+        res = kleene(alfabeto, longitud)
+
+        texto_guardar_kleene = "Σ*:\n\n" + ", ".join(res)
+        resultado_kleene.value = "Σ*:\n\n" + ", ".join(res)
+
+        page.update()
+
+    def calcular_positiva(e):
+
+        nonlocal texto_guardar_kleene
+        alfabeto = entrada_alfabeto.value.split(",")
+        longitud = int(entrada_longitud.value)
+
+        res = positiva(alfabeto, longitud)
+
+        texto_guardar_kleene = "Σ+:\n\n" + ", ".join(res)
+        resultado_kleene.value = "Σ+:\n\n" + ", ".join(res)
+
+        page.update()
+
+    def guardar_kleene (e):
+        if texto_guardar_kleene:
+            with open("resultados_kleene.txt", "w", encoding="utf-8") as f:
+                f.write(texto_guardar_kleene)
+
+            resultado_kleene.value += "\n\nResultados guardados en resultados_kleene.txt"    
+            page.update()
+
+    seccion_cadenas = ft.Container( #Cadenas
+        content=ft.Column(
+            [
+                ft.Text("Operaciones sobre Cadenas", size=20, weight="bold"),
+                entrada_cadena,
+                ft.Row(
+                    [
+                        ft.ElevatedButton("Calcular", on_click=calcular_cadena),
+                        ft.ElevatedButton("Guardar resultados", on_click=guardar),
+                    ]
+                ),
+                resultado_cadena,
+            ]
+        ),
+        padding=20,
+        border_radius=10, 
     )
+
+
+    seccion_kleene = ft.Container( #Kleene
+        content=ft.Column(
+            [
+                ft.Text("Cerradura de Kleene y Positiva", size=20, weight="bold"),
+                entrada_alfabeto,
+                entrada_longitud,
+                ft.Row(
+                    [
+                        ft.ElevatedButton("Calcular Σ*", on_click=calcular_kleene),
+                        ft.ElevatedButton("Calcular Σ+", on_click=calcular_positiva),
+                        ft.ElevatedButton("Guardar resultados", on_click=guardar_kleene),
+                    ]
+                ),
+                resultado_kleene,
+            ]
+        ),
+        padding=20,
+        border_radius=10,
+    )
+
+
+    page.add(
+
+        ft.Text(
+            "Práctica 1 - Operaciones Básicas sobre Lenguajes",
+            size=26,
+            weight="bold"
+        ),
+
+        ft.Divider(),
+
+        seccion_cadenas,
+
+        ft.Divider(),
+
+        seccion_kleene
+    )
+
 
 ft.app(target=main)
